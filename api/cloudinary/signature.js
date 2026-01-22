@@ -9,7 +9,7 @@ export default async function handler(req, res) {
 
     const env = getEnv();
     const timestamp = Math.floor(Date.now() / 1000);
-    const folder = env.CLOUDINARY_FOLDER || "early-wakeup";
+    const folder = (env.CLOUDINARY_FOLDER || "early-wakeup").trim();
 
     // Cloudinary signature: sign the string of params in alphabetical order.
     // We sign only what we require client to send (timestamp + folder).
