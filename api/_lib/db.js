@@ -7,7 +7,15 @@ export function getDb() {
   if (cached) return cached;
   const env = getEnv();
   try {
-    cached = createClient({ url: env.TURSO_DATABASE_URL, authToken: env.TURSO_AUTH_TOKEN });
+    // Remove any quotes or whitespace from the URL
+    const url = env.TURSO_DATABASE_URL.trim().replace(/^["']|["']$/g, '');
+    const authToken = env.TURSO_AUTH_TOKEN.trim().replace(/^["']|["']$/g, '');
+    
+    if (!url || !url.startsWith('libsql://')) {
+      throw new Error(`Invalid database URL format. Expected libsql:// URL, got: ${url ? url.substring(0, 20) + '...' : 'empty'}`);
+    }
+    
+    cached = createClient({ url, authToken });
     return cached;
   } catch (err) {
     const error = new Error(`Database connection failed: ${err.message}`);
