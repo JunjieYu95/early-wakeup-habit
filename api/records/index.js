@@ -3,10 +3,15 @@ import { onlyMethods, parseJsonBody, sendJson, sendError } from "../_lib/http.js
 import { RecordUpsertSchema, RangeQuerySchema } from "../_lib/validation.js";
 
 function parseQuery(url) {
-  const u = new URL(url, "http://localhost");
-  const obj = {};
-  for (const [k, v] of u.searchParams.entries()) obj[k] = v;
-  return obj;
+  try {
+    const u = new URL(url, "http://localhost");
+    const obj = {};
+    for (const [k, v] of u.searchParams.entries()) obj[k] = v;
+    return obj;
+  } catch (err) {
+    // If URL parsing fails, return empty object
+    return {};
+  }
 }
 
 export default async function handler(req, res) {
