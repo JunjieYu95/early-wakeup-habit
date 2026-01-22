@@ -1,0 +1,29 @@
+{
+  "name": "early-wakeup-habit",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/web"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:web\" \"npm run dev:vercel\"",
+    "start": "concurrently \"npm run dev:web\" \"npm run dev:vercel\"",
+    "dev:web": "npm --workspace apps/web run dev",
+    "dev:vercel": "vercel dev --listen 3000 --yes",
+    "build": "npm run build:web",
+    "build:web": "npm --workspace apps/web run build",
+    "lint": "npm --workspace apps/web run lint || true",
+    "init-db": "node scripts/init-db.js"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.15.0",
+    "cloudinary": "^2.5.1",
+    "date-fns": "^3.6.0",
+    "dotenv": "^17.2.3",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.1",
+    "vercel": "^50.4.9"
+  }
+}
