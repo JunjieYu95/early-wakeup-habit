@@ -29,8 +29,24 @@ const EnvSchema = z.object({
   CLOUDINARY_FOLDER: z.string().optional()
 });
 
+// Clean environment variable - remove quotes, whitespace, and line endings
+function cleanEnvValue(value) {
+  if (!value) return value;
+  return value.trim().replace(/^["']|["']$/g, '').replace(/[\r\n]+/g, '').trim();
+}
+
 export function getEnv() {
-  const parsed = EnvSchema.safeParse(process.env);
+  // Clean all environment variables before validation
+  const cleanedEnv = {};
+  for (const [key, value] of Object.entries(process.env)) {
+    if (key.startsWith('TURSO_') || key.startsWith('CLOUDINARY_')) {
+      cleanedEnv[key] = cleanEnvValue(value);
+    } else {
+      cleanedEnv[key] = value;
+    }
+  }
+  
+  const parsed = EnvSchema.safeParse(cleanedEnv);
   if (!parsed.success) {
     const msg = parsed.error.issues.map(i => `${i.path.join(".")}: ${i.message}`).join("; ");
     const err = new Error(`Invalid environment configuration: ${msg}`);
