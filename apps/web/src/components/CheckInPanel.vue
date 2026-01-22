@@ -94,7 +94,9 @@ async function onPick(e){
     const up = await uploadToCloudinary(file);
     imageUrl.value = up.imageUrl;
     imagePublicId.value = up.imagePublicId;
-    emit("toast", "Uploaded photo.");
+    emit("toast", "Uploaded photo. Saving...");
+    // Auto-save after upload
+    await onSave();
   }catch(err){
     emit("toast", err?.message || "Upload failed.");
   }finally{
