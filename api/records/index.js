@@ -27,7 +27,7 @@ export default async function handler(req, res) {
       const to = q.to || "9999-12-31";
 
       const rs = await db.execute({
-        sql: `SELECT date, checked, image_url as imageUrl, image_public_id as imagePublicId, note, created_at as createdAt, updated_at as updatedAt
+        sql: `SELECT date, checked, image_url as imageUrl, image_public_id as imagePublicId, note, utc_offset_minutes as utcOffsetMinutes, created_at as createdAt, updated_at as updatedAt
               FROM wakeup_records
               WHERE date >= ? AND date <= ?
               ORDER BY date ASC`,
@@ -43,13 +43,14 @@ export default async function handler(req, res) {
     const parsed = RecordUpsertSchema.parse(body);
 
     await db.execute({
-      sql: `INSERT INTO wakeup_records (date, checked, image_url, image_public_id, note, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+      sql: `INSERT INTO wakeup_records (date, checked, image_url, image_public_id, note, utc_offset_minutes, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(date) DO UPDATE SET
               checked=excluded.checked,
               image_url=excluded.image_url,
               image_public_id=excluded.image_public_id,
               note=excluded.note,
+              utc_offset_minutes=excluded.utc_offset_minutes,
               updated_at=excluded.updated_at`,
       args: [
         parsed.date,
@@ -57,6 +58,7 @@ export default async function handler(req, res) {
         parsed.imageUrl ?? null,
         parsed.imagePublicId ?? null,
         parsed.note ?? null,
+        parsed.utcOffsetMinutes ?? null,
         isoNow(),
         isoNow()
       ]

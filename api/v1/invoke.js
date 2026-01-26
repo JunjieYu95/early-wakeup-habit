@@ -16,18 +16,25 @@ const ACTION_SCOPES = {
   [ACTIONS.DELETE]: ["habit:delete"]
 };
 
-function getTodayDate() {
-  return new Date().toISOString().split("T")[0];
+function getNowWithOffset(utcOffsetMinutes) {
+  if (Number.isFinite(utcOffsetMinutes)) {
+    return new Date(Date.now() + utcOffsetMinutes * 60 * 1000);
+  }
+  return new Date();
 }
 
-function getDateDaysAgo(days) {
-  const date = new Date();
+function getTodayDate(utcOffsetMinutes) {
+  return getNowWithOffset(utcOffsetMinutes).toISOString().split("T")[0];
+}
+
+function getDateDaysAgo(days, utcOffsetMinutes) {
+  const date = getNowWithOffset(utcOffsetMinutes);
   date.setDate(date.getDate() - days);
   return date.toISOString().split("T")[0];
 }
 
-function getCurrentMonth() {
-  return new Date().toISOString().slice(0, 7);
+function getCurrentMonth(utcOffsetMinutes) {
+  return getNowWithOffset(utcOffsetMinutes).toISOString().slice(0, 7);
 }
 
 function parseScopes(raw) {
@@ -46,7 +53,7 @@ function requireScope(scopes, required) {
 
 async function fetchRecords(db, from, to) {
   const rs = await db.execute({
-    sql: `SELECT date, checked, image_url as imageUrl, image_public_id as imagePublicId, note, created_at as createdAt, updated_at as updatedAt
+    sql: `SELECT date, checked, image_url as imageUrl, image_public_id as imagePublicId, note, utc_offset_minutes as utcOffsetMinutes, created_at as createdAt, updated_at as updatedAt
           FROM wakeup_records
           WHERE date >= ? AND date <= ?
           ORDER BY date ASC`,
@@ -57,22 +64,23 @@ async function fetchRecords(db, from, to) {
 
 async function fetchRecord(db, date) {
   const rs = await db.execute({
-    sql: `SELECT date, checked, image_url as imageUrl, image_public_id as imagePublicId, note, created_at as createdAt, updated_at as updatedAt
+    sql: `SELECT date, checked, image_url as imageUrl, image_public_id as imagePublicId, note, utc_offset_minutes as utcOffsetMinutes, created_at as createdAt, updated_at as updatedAt
           FROM wakeup_records WHERE date = ? LIMIT 1`,
     args: [date]
   });
   return rs.rows?.[0] || null;
 }
 
-async function createOrUpdateRecord(db, date, checked, note) {
+async function createOrUpdateRecord(db, date, checked, note, utcOffsetMinutes) {
   await db.execute({
-    sql: `INSERT INTO wakeup_records (date, checked, image_url, image_public_id, note, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?)
+    sql: `INSERT INTO wakeup_records (date, checked, image_url, image_public_id, note, utc_offset_minutes, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(date) DO UPDATE SET
             checked=excluded.checked,
             image_url=excluded.image_url,
             image_public_id=excluded.image_public_id,
             note=excluded.note,
+            utc_offset_minutes=excluded.utc_offset_minutes,
             updated_at=excluded.updated_at`,
     args: [
       date,
@@ -80,6 +88,7 @@ async function createOrUpdateRecord(db, date, checked, note) {
       null,
       null,
       note ?? null,
+      utcOffsetMinutes ?? null,
       isoNow(),
       isoNow()
     ]
@@ -100,8 +109,8 @@ function validateDate(value) {
   return parsed.data;
 }
 
-async function handleCheckin(db, params, userId) {
-  const date = params.date ? validateDate(params.date) : getTodayDate();
+async function handleCheckin(db, params, userId, utcOffsetMinutes) {
+  const date = params.date ? validateDate(params.date) : getTodayDate(utcOffsetMinutes);
   const checked = params.checked !== false;
   const note = params.note;
   const wakeTime = params.wakeTime;
@@ -110,7 +119,7 @@ async function handleCheckin(db, params, userId) {
     ? (note ? `${note} (Woke up at ${wakeTime})` : `Woke up at ${wakeTime}`)
     : note;
 
-  await createOrUpdateRecord(db, date, checked, fullNote);
+  await createOrUpdateRecord(db, date, checked, fullNote, utcOffsetMinutes);
 
   return {
     success: true,
@@ -122,14 +131,15 @@ async function handleCheckin(db, params, userId) {
         date,
         checked,
         note: fullNote || undefined,
-        wakeTime
+        wakeTime,
+        utcOffsetMinutes: utcOffsetMinutes ?? undefined
       },
       userId
     }
   };
 }
 
-async function handleQuery(db, params) {
+async function handleQuery(db, params, utcOffsetMinutes) {
   if (params.date) {
     const date = validateDate(params.date);
     const record = await fetchRecord(db, date);
@@ -142,21 +152,23 @@ async function handleQuery(db, params) {
           ? {
               date: record.date,
               checked: record.checked === 1,
-              note: record.note || undefined
+              note: record.note || undefined,
+              utcOffsetMinutes: record.utcOffsetMinutes ?? undefined
             }
           : null
       }
     };
   }
 
-  const from = params.from ? validateDate(params.from) : getDateDaysAgo(7);
-  const to = params.to ? validateDate(params.to) : getTodayDate();
+  const from = params.from ? validateDate(params.from) : getDateDaysAgo(7, utcOffsetMinutes);
+  const to = params.to ? validateDate(params.to) : getTodayDate(utcOffsetMinutes);
 
   const externalRecords = await fetchRecords(db, from, to);
   const records = externalRecords.map((r) => ({
     date: r.date,
     checked: r.checked === 1,
-    note: r.note || undefined
+    note: r.note || undefined,
+    utcOffsetMinutes: r.utcOffsetMinutes ?? undefined
   }));
 
   return {
@@ -170,14 +182,14 @@ async function handleQuery(db, params) {
   };
 }
 
-async function handleStats(db, params) {
-  const month = params.month || getCurrentMonth();
+async function handleStats(db, params, utcOffsetMinutes) {
+  const month = params.month || getCurrentMonth(utcOffsetMinutes);
   const includeStreak = params.includeStreak !== false;
 
   const monthStart = `${month}-01`;
   const monthEnd = `${month}-31`;
-  const fromDate = includeStreak ? getDateDaysAgo(60) : monthStart;
-  const toDate = includeStreak ? getTodayDate() : monthEnd;
+  const fromDate = includeStreak ? getDateDaysAgo(60, utcOffsetMinutes) : monthStart;
+  const toDate = includeStreak ? getTodayDate(utcOffsetMinutes) : monthEnd;
 
   const externalRecords = await fetchRecords(db, fromDate, toDate);
   const allRecords = externalRecords
@@ -197,7 +209,7 @@ async function handleStats(db, params) {
 
   if (includeStreak) {
     const sortedRecords = [...allRecords].sort((a, b) => b.date.localeCompare(a.date));
-    let expectedDate = getTodayDate();
+    let expectedDate = getTodayDate(utcOffsetMinutes);
 
     for (const record of sortedRecords) {
       if (record.date === expectedDate && record.checked) {
@@ -281,6 +293,14 @@ export default async function handler(req, res) {
 
     const userId = req.headers["x-yukie-user-id"] || body?.context?.userId;
     const scopes = parseScopes(req.headers["x-yukie-scopes"] || body?.context?.scopes);
+    const headerOffset = req.headers["x-yukie-utc-offset-minutes"];
+    const headerOffsetValue = Array.isArray(headerOffset) ? headerOffset[0] : headerOffset;
+    const offsetCandidate = [
+      body?.params?.utcOffsetMinutes,
+      body?.context?.utcOffsetMinutes,
+      headerOffsetValue !== undefined ? Number(headerOffsetValue) : undefined
+    ].find((value) => Number.isFinite(value));
+    const utcOffsetMinutes = Number.isFinite(offsetCandidate) ? Number(offsetCandidate) : undefined;
 
     if (!userId) {
       sendJson(res, 401, {
@@ -305,13 +325,13 @@ export default async function handler(req, res) {
     let result;
     switch (body.action) {
       case ACTIONS.CHECKIN:
-        result = await handleCheckin(db, params, userId);
+        result = await handleCheckin(db, params, userId, utcOffsetMinutes);
         break;
       case ACTIONS.QUERY:
-        result = await handleQuery(db, params);
+        result = await handleQuery(db, params, utcOffsetMinutes);
         break;
       case ACTIONS.STATS:
-        result = await handleStats(db, params);
+        result = await handleStats(db, params, utcOffsetMinutes);
         break;
       case ACTIONS.DELETE:
         result = await handleDelete(db, params);

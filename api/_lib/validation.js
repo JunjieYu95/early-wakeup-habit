@@ -7,14 +7,16 @@ export const RecordUpsertSchema = z.object({
   checked: z.boolean().optional().default(false),
   imageUrl: z.string().url().optional().nullable(),
   imagePublicId: z.string().optional().nullable(),
-  note: z.string().max(500).optional().nullable()
+  note: z.string().max(500).optional().nullable(),
+  utcOffsetMinutes: z.number().int().min(-720).max(840).optional().nullable()
 });
 
 export const RecordPatchSchema = z.object({
   checked: z.boolean().optional(),
   imageUrl: z.string().url().optional().nullable(),
   imagePublicId: z.string().optional().nullable(),
-  note: z.string().max(500).optional().nullable()
+  note: z.string().max(500).optional().nullable(),
+  utcOffsetMinutes: z.number().int().min(-720).max(840).optional().nullable()
 });
 
 export const RangeQuerySchema = z.object({
@@ -29,7 +31,8 @@ export const CheckInSchema = z.object({
   message: z.string().max(500).optional().nullable(),
   note: z.string().max(500).optional().nullable(), // Also accept note for compatibility
   imageUrl: z.string().url().optional().nullable(),
-  imagePublicId: z.string().optional().nullable()
+  imagePublicId: z.string().optional().nullable(),
+  utcOffsetMinutes: z.number().int().min(-720).max(840).optional().nullable()
 }).transform((data) => {
   // Use message if provided, otherwise use note
   return {

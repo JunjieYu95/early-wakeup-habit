@@ -21,7 +21,7 @@ export default async function handler(req, res) {
 
     if (req.method === "GET") {
       const rs = await db.execute({
-        sql: `SELECT date, checked, image_url as imageUrl, image_public_id as imagePublicId, note, created_at as createdAt, updated_at as updatedAt
+        sql: `SELECT date, checked, image_url as imageUrl, image_public_id as imagePublicId, note, utc_offset_minutes as utcOffsetMinutes, created_at as createdAt, updated_at as updatedAt
               FROM wakeup_records WHERE date = ? LIMIT 1`,
         args: [date]
       });
@@ -49,6 +49,7 @@ export default async function handler(req, res) {
       if ("imageUrl" in patch) { sets.push("image_url = ?"); args.push(patch.imageUrl ?? null); }
       if ("imagePublicId" in patch) { sets.push("image_public_id = ?"); args.push(patch.imagePublicId ?? null); }
       if ("note" in patch) { sets.push("note = ?"); args.push(patch.note ?? null); }
+      if ("utcOffsetMinutes" in patch) { sets.push("utc_offset_minutes = ?"); args.push(patch.utcOffsetMinutes ?? null); }
 
       sets.push("updated_at = ?");
       args.push(isoNow());

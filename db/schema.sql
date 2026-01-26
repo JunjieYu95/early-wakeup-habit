@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS wakeup_records (
   image_url TEXT,
   image_public_id TEXT,
   note TEXT,
+  utc_offset_minutes INTEGER,
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );

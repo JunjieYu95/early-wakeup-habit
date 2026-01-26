@@ -23,13 +23,14 @@ export default async function handler(req, res) {
         const checkin = parsed.checkins[i];
         try {
           await db.execute({
-            sql: `INSERT INTO wakeup_records (date, checked, image_url, image_public_id, note, created_at, updated_at)
-                  VALUES (?, ?, ?, ?, ?, ?, ?)
+            sql: `INSERT INTO wakeup_records (date, checked, image_url, image_public_id, note, utc_offset_minutes, created_at, updated_at)
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                   ON CONFLICT(date) DO UPDATE SET
                     checked=excluded.checked,
                     image_url=excluded.image_url,
                     image_public_id=excluded.image_public_id,
                     note=excluded.note,
+                    utc_offset_minutes=excluded.utc_offset_minutes,
                     updated_at=excluded.updated_at`,
             args: [
               checkin.date,
@@ -37,6 +38,7 @@ export default async function handler(req, res) {
               checkin.imageUrl ?? null,
               checkin.imagePublicId ?? null,
               checkin.note ?? null,
+              checkin.utcOffsetMinutes ?? null,
               isoNow(),
               isoNow()
             ]
@@ -64,13 +66,14 @@ export default async function handler(req, res) {
       const parsed = CheckInSchema.parse(body);
 
       await db.execute({
-        sql: `INSERT INTO wakeup_records (date, checked, image_url, image_public_id, note, created_at, updated_at)
-              VALUES (?, ?, ?, ?, ?, ?, ?)
+        sql: `INSERT INTO wakeup_records (date, checked, image_url, image_public_id, note, utc_offset_minutes, created_at, updated_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?)
               ON CONFLICT(date) DO UPDATE SET
                 checked=excluded.checked,
                 image_url=excluded.image_url,
                 image_public_id=excluded.image_public_id,
                 note=excluded.note,
+                utc_offset_minutes=excluded.utc_offset_minutes,
                 updated_at=excluded.updated_at`,
         args: [
           parsed.date,
@@ -78,16 +81,18 @@ export default async function handler(req, res) {
           parsed.imageUrl ?? null,
           parsed.imagePublicId ?? null,
           parsed.note ?? null,
+          parsed.utcOffsetMinutes ?? null,
           isoNow(),
           isoNow()
         ]
       });
 
-      sendJson(res, 200, { 
-        ok: true, 
+      sendJson(res, 200, {
+        ok: true,
         date: parsed.date,
         checked: parsed.checked,
-        message: parsed.note
+        message: parsed.note,
+        utcOffsetMinutes: parsed.utcOffsetMinutes ?? null
       });
       return;
     }

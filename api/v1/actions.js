@@ -29,6 +29,12 @@ const actions = [
         type: "string",
         required: false,
         description: "For early wake-up habit, the time woken up (HH:MM format)."
+      },
+      {
+        name: "utcOffsetMinutes",
+        type: "number",
+        required: false,
+        description: "User's UTC offset in minutes (e.g., -420 for UTC-7)."
       }
     ],
     requiredScopes: ["habit:write"],
@@ -55,6 +61,12 @@ const actions = [
         type: "string",
         required: false,
         description: "Query a specific date (alternative to from/to range)."
+      },
+      {
+        name: "utcOffsetMinutes",
+        type: "number",
+        required: false,
+        description: "User's UTC offset in minutes (e.g., -420 for UTC-7)."
       }
     ],
     requiredScopes: ["habit:read"],
@@ -76,6 +88,12 @@ const actions = [
         required: false,
         description: "Include current streak information. Defaults to true.",
         default: true
+      },
+      {
+        name: "utcOffsetMinutes",
+        type: "number",
+        required: false,
+        description: "User's UTC offset in minutes (e.g., -420 for UTC-7)."
       }
     ],
     requiredScopes: ["habit:read"],
