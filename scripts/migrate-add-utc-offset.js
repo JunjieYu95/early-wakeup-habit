@@ -4,8 +4,8 @@ import dotenv from "dotenv";
 // Load environment variables from .env.local
 dotenv.config({ path: ".env.local" });
 
-const url = process.env.TURSO_DATABASE_URL;
-const authToken = process.env.TURSO_AUTH_TOKEN;
+const url = process.env.TURSO_DATABASE_URL?.trim().replace(/^["']|["']$/g, "");
+const authToken = process.env.TURSO_AUTH_TOKEN?.trim().replace(/^["']|["']$/g, "");
 
 if (!url || !authToken) {
   console.error("Missing TURSO_DATABASE_URL or TURSO_AUTH_TOKEN in environment.");
